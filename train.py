@@ -247,7 +247,7 @@ def run_train(config, train_set, dev_set):
             truth = []
             pred = []
             a = 0
-            for data, label, idx in dev_set:
+            for data, label, idx, label_token in dev_set:
                 padding_mask = data != tokenizer.pad_token_id
                 output = model(data, padding_mask, labels=label, return_dict=True, )
                 for l in label:
