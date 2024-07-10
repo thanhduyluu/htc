@@ -8,7 +8,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_adj
-from transformers import T5PreTrainedModel, AutoTokenizer, T5EncoderModel, T5ForSequenceClassification
+from transformers import AutoTokenizer, BertModel, BertPreTrainedModel
 
 from models.hill.coding_tree import get_tree_data
 from models.hill.hill import HRLEncoder, GTData
@@ -72,17 +72,15 @@ class NTXent(nn.Module):
         return loss
 
 
-class BertAndGraphModel(T5PreTrainedModel):
+class BertAndGraphModel(BertPreTrainedModel):
     def __init__(self, config, local_config):
         super(BertAndGraphModel, self).__init__(config)
-        # print(config)
         self.config = config
         self.local_config = local_config
         self.num_labels = config.num_labels
         self.tokenizer = AutoTokenizer.from_pretrained(config.name_or_path)
-        self.text_drop = nn.Dropout(config.dropout_rate)
-        self.bert = T5EncoderModel(config)
-        self.bert_decoder = T5ForSequenceClassification(config)
+        self.text_drop = nn.Dropout(config.hidden_dropout_prob)
+        self.bert = BertModel(config)
         self.bert_pool = BertPoolingLayer('cls')
         self.structure_encoder = None
 
@@ -105,25 +103,24 @@ class BertAndGraphModel(T5PreTrainedModel):
                                        )
         # For label attention
         if hasattr(local_config, "label") and local_config.label:
-            self.label_type = local_config.label_type
-            self.label_dict = torch.load(
-                os.path.join(local_config.data_dir, local_config.dataset, 'bert_value_dict.pt'))
-            self.label_dict = {i: self.tokenizer.decode(v) for i, v in self.label_dict.items()}
-            self.label_name = []
-            for i in range(len(self.label_dict)):
-                self.label_name.append(self.label_dict[i])
-            self.label_name = self.tokenizer(self.label_name, padding='longest')['input_ids']
-            self.label_name = nn.Parameter(torch.tensor(self.label_name, dtype=torch.long), requires_grad=False)
-
+            # self.label_type = local_config.label_type
+            # self.label_dict = torch.load(os.path.join(local_config.data_dir, local_config.dataset, 'bert_value_dict.pt'))
+            # self.label_dict = {i: self.tokenizer.decode(v) for i, v in self.label_dict.items()}
+            # self.label_name = []
+            # for i in range(len(self.label_dict)):
+            #     self.label_name.append(self.label_dict[i])
+            # self.label_name = self.tokenizer(self.label_name, padding='longest')['input_ids']
+            # self.label_name = nn.Parameter(torch.tensor(self.label_name, dtype=torch.long), requires_grad=False)
+            #
             # self.attn = FusionLayer1(config, local_config)
-            self.attn = None
-            self.label_embeddings = nn.Embedding(config.num_labels, config.hidden_size)
-
-            self.trans_proj = nn.Sequential(nn.Linear(config.hidden_size, config.hidden_size),
-                                            nn.ReLU(inplace=True),
-                                            nn.Linear(config.hidden_size, config.hidden_size),
-                                            nn.Dropout(p=local_config.structure_encoder.trans_dp)
-                                            )
+            # self.label_embeddings = nn.Embedding(config.num_labels, config.hidden_size)
+            #
+            # self.trans_proj = nn.Sequential(nn.Linear(config.hidden_size, config.hidden_size),
+            #                                 nn.ReLU(inplace=True),
+            #                                 nn.Linear(config.hidden_size, config.hidden_size),
+            #                                 nn.Dropout(p=local_config.structure_encoder.trans_dp)
+            #                                 )
+            pass
         else:
             self.trans_proj = nn.Sequential(nn.Linear(config.hidden_size, local_config.hidden_dim),
                                             nn.ReLU(inplace=True),
@@ -214,7 +211,6 @@ class BertAndCodingTreeModel(BertAndGraphModel):
 
     def align_tree(self, embeds, batch_size):
         batch_tree = [copy.deepcopy(self.tree) for _ in range(batch_size)]
-        # debug(self.tree)
         for i in range(batch_size):
             batch_tree[i].x = embeds[i]
         return batch_tree
@@ -241,11 +237,10 @@ class StructureContrast(BertAndCodingTreeModel):
                                        nn.ReLU(inplace=True),
                                        nn.Linear(local_config.contrast.proj_dim, local_config.contrast.proj_dim)
                                        )
-        self.tree_proj = nn.Sequential(
-            nn.Linear(local_config.structure_encoder.output_dim, local_config.contrast.proj_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(local_config.contrast.proj_dim, local_config.contrast.proj_dim)
-        )
+        self.tree_proj = nn.Sequential(nn.Linear(local_config.structure_encoder.output_dim, local_config.contrast.proj_dim),
+                                       nn.ReLU(inplace=True),
+                                       nn.Linear(local_config.contrast.proj_dim, local_config.contrast.proj_dim)
+                                       )
         self.node_mask = nn.Parameter(torch.randn(local_config.hidden_dim))
         self.init_weights()  # Warning! This is NOT training BERT from scratch
 
@@ -267,8 +262,8 @@ class StructureContrast(BertAndCodingTreeModel):
         outputs = self.bert(
             input_ids,
             attention_mask=attention_mask,
-            # token_type_ids=token_type_ids,
-            # position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
             head_mask=head_mask,
             inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
@@ -278,16 +273,15 @@ class StructureContrast(BertAndCodingTreeModel):
 
         hidden_states = outputs[0]
         pooled_cls_embed = self.text_drop(self.bert_pool(hidden_states))
-        # decoder = self.bert_decoder()
+
         batch_size = hidden_states.shape[0]
+
         loss = 0
         contrast_logits = None
+
         text_embeds = self.batch_duplicate(pooled_cls_embed)
-        # debug(text_embeds.shape)
         batch_tree = self.align_tree(text_embeds, batch_size)
-        # debug(len(batch_tree))
         tree_loader = DataLoader(batch_tree, batch_size=batch_size, follow_batch=self.fb_keys)
-        # debug(tree_loader)
         contrast_output = self.structure_encoder(next(iter(tree_loader)))
         self.output_type = "residual"
         self.contrast_loss = True
@@ -299,17 +293,16 @@ class StructureContrast(BertAndCodingTreeModel):
             logits = self.classifier(torch.cat([pooled_cls_embed, contrast_output], dim=1))  # [bert, hill]
         else:
             logits = self.classifier(pooled_cls_embed)  # bert
-        self.multi_label = True
+
         if labels is not None:
             if self.training:
                 if not self.multi_label:
                     loss_fct = CrossEntropyLoss()
                     target = labels.view(-1)
-                    loss += loss_fct(logits.view(-1), target)
                 else:
                     loss_fct = nn.BCEWithLogitsLoss()
                     target = labels.to(torch.float32)
-                    # debug(target)
+                if self.cls_loss:
                     loss += loss_fct(logits.view(-1, self.num_labels), target)
                 if self.contrast_loss:
                     contrastive_loss = self.contrastive_lossfct(

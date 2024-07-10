@@ -296,8 +296,8 @@ if __name__ == '__main__':
     config = utils.Configure(config_json_file=os.path.join(args.cfg_dir, args.model_name + '.json'))
 
     # bert_file = "/YOUR_BERT_DIR/bert-base-uncased"  # For offline.
-    bert_file = 'google-t5/t5-base'  # For online.
-    # bert_file = 'bert-base-uncased'  # For online.
+    # bert_file = 'google-t5/t5-base'  # For online.
+    bert_file = 'bert-base-uncased'  # For online.
     print(args.data_dir)
     tokenizer = AutoTokenizer.from_pretrained(bert_file)
     data_path = os.path.join(args.data_dir, args.dataset)
