@@ -297,7 +297,8 @@ if __name__ == '__main__':
 
     # bert_file = "/YOUR_BERT_DIR/bert-base-uncased"  # For offline.
     # bert_file = 'google-t5/t5-base'  # For online.
-    bert_file = 'bert-base-uncased'  # For online.
+    # bert_file = 'bert-base-uncased'  # For online.
+    bert_file = 'google-bert/bert-base-multilingual-cased'  # For online.
     print(args.data_dir)
     tokenizer = AutoTokenizer.from_pretrained(bert_file)
     data_path = os.path.join(args.data_dir, args.dataset)

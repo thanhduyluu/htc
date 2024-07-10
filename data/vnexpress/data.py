@@ -12,7 +12,7 @@ np.random.seed(7)
 
 if __name__ == '__main__':
     # model = 'google-t5/t5-base'  # For online.
-    model = 'bert-base-uncased'
+    model = 'google-bert/bert-base-multilingual-cased'
     tokenizer = AutoTokenizer.from_pretrained(model)
     source = []
     labels = []
