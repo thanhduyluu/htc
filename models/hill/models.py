@@ -289,7 +289,7 @@ class StructureContrast(BertAndCodingTreeModel):
         tree_loader = DataLoader(batch_tree, batch_size=batch_size, follow_batch=self.fb_keys)
         # debug(tree_loader)
         contrast_output = self.structure_encoder(next(iter(tree_loader)))
-
+        self.output_type = "residual"
         if self.output_type == 'tree':
             logits = self.classifier(contrast_output)  # hill
         elif self.output_type == 'residual':
@@ -308,7 +308,7 @@ class StructureContrast(BertAndCodingTreeModel):
                 else:
                     loss_fct = nn.BCEWithLogitsLoss()
                     target = labels.to(torch.float32)
-                    debug(target)
+                    # debug(target)
                     loss += loss_fct(logits.view(-1, self.num_labels), target)
                 if self.contrast_loss:
                     contrastive_loss = self.contrastive_lossfct(

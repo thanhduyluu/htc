@@ -205,7 +205,7 @@ def run_train(config, train_set, dev_set):
     num_params = sum(p.numel() for n, p in model.named_parameters() if 'bert' not in n)
     num_params = clever_format([num_params], "%.4f")
     print("Trainable parameters: {}.".format(num_params))
-    debug(model)
+    # debug(model)
     def initialize_weights(m):
         if isinstance(m, nn.Linear):
             torch.nn.init.kaiming_uniform_(m.weight)
@@ -224,7 +224,7 @@ def run_train(config, train_set, dev_set):
             current_step = current_step - 1
             t = time.time()
             padding_mask = data != tokenizer.pad_token_id
-            debug(label)
+            # debug(label)
             output = model(data, padding_mask, labels=label, return_dict=True, )
             loss += output['loss'].item()
             bert_optimizer.zero_grad()
