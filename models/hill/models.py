@@ -290,6 +290,7 @@ class StructureContrast(BertAndCodingTreeModel):
         # debug(tree_loader)
         contrast_output = self.structure_encoder(next(iter(tree_loader)))
         self.output_type = "residual"
+        self.contrast_loss = True
         if self.output_type == 'tree':
             logits = self.classifier(contrast_output)  # hill
         elif self.output_type == 'residual':
