@@ -6,6 +6,7 @@ from transformers.activations import ACT2FN
 import os
 
 from torch_geometric.nn import GCNConv, GATConv
+from transformers import GraphormerModel
 
 # GRAPH = 'GCN'
 GRAPH = "GRAPHORMER"

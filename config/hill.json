@@ -10,15 +10,17 @@
     "tau": 1.0
   },
   "train": {
-    "bert_lr": 3e-5,
-    "epoch": 50,
-    "early_stop": 10,
+    "bert_lr": 1e-6,
+    "epoch": 600,
+    "early_stop": 600,
     "update": 1,
     "warmup": true,
     "warmup_steps": 2000
   },
+
+  "dropout_rate": 0.01,
   "device_setting": {
-    "device": "cuda",
+    "device": "mps",
     "num_workers": 8
   }
 }

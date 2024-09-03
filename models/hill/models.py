@@ -8,8 +8,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_adj
-from transformers import T5PreTrainedModel, AutoTokenizer, T5EncoderModel, T5ForSequenceClassification
-
+from transformers import AutoTokenizer, BertModel, BertPreTrainedModel
 from models.hill.coding_tree import get_tree_data
 from models.hill.hill import HRLEncoder, GTData
 
@@ -72,7 +71,7 @@ class NTXent(nn.Module):
         return loss
 
 
-class BertAndGraphModel(T5PreTrainedModel):
+class BertAndGraphModel(BertModel):
     def __init__(self, config, local_config):
         super(BertAndGraphModel, self).__init__(config)
         # print(config)
@@ -80,9 +79,9 @@ class BertAndGraphModel(T5PreTrainedModel):
         self.local_config = local_config
         self.num_labels = config.num_labels
         self.tokenizer = AutoTokenizer.from_pretrained(config.name_or_path)
-        self.text_drop = nn.Dropout(config.dropout_rate)
-        self.bert = T5EncoderModel(config)
-        self.bert_decoder = T5ForSequenceClassification(config)
+        self.text_drop = nn.Dropout(0.1)
+        self.bert = BertModel(config)
+        # self.bert_decoder = T5ForSequenceClassification(config)
         self.bert_pool = BertPoolingLayer('cls')
         self.structure_encoder = None
 
